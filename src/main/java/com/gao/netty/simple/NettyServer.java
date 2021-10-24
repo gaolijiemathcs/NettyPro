@@ -1,10 +1,7 @@
 package com.gao.netty.simple;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -16,7 +13,8 @@ public class NettyServer {
         //1. 创建两个线程组 bossGroup和workerGroup
         //2. bossGroup只是处理连接请求，真正的和客户端业务处理，会交给workerGroup完成
         //3. 两个都是无限循环
-        EventLoopGroup bossGroup = new NioEventLoopGroup();
+        //4. bossGroup 和 workerGroup 含有的子线程(NioEventLoop)的个数 默认=cpu核数*2
+        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
 
         try {
@@ -32,6 +30,8 @@ public class NettyServer {
                         // 给pipeline 设置处理器
                         @Override
                         protected void initChannel(SocketChannel ch) throws Exception {
+                            System.out.println("客户socketChannel hashCode = " + ch.hashCode() );
+                            //可以使用一个集合管理socketChannel 再推送消息时 可以将业务加入到各个channel对应的NIOEventLoop的taskQueue或scheduleTaskQueue
                             ch.pipeline().addLast(new NettyServerHandler());
                         }
                     }); // 给我们的workerGroup的EventLoop对应的管道设置处理器
@@ -40,10 +40,21 @@ public class NettyServer {
 
             // 绑定一个端口并且同步 生成了一个ChannelFuture对象
             // 启动服务器(并绑定端口)
-            ChannelFuture channelFuture = bootstrap.bind(6668).sync();
+            ChannelFuture cf = bootstrap.bind(6668).sync();
+
+            cf.addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    if(cf.isSuccess()) {
+                        System.out.println("监听端口6668成功");
+                    } else {
+                        System.out.println("监听端口失败");
+                    }
+                }
+            });
 
             // 对关闭通道进行监听
-            channelFuture.channel().closeFuture().sync();
+            cf.channel().closeFuture().sync();
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
