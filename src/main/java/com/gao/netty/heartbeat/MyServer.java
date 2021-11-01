@@ -41,7 +41,9 @@ public class MyServer {
                              * 通过调用(触发)下一个handler的userEventTriggered 在该方法中区处理
                              * 可能是读空闲/写空闲/读写空闲
                              */
-                            pipeline.addLast(new IdleStateHandler(13, 5, 2, TimeUnit.SECONDS));
+                            pipeline.addLast(new IdleStateHandler(7000, 7000, 10, TimeUnit.SECONDS));
+
+
                             // 加入一个对空闲检测进一步处理的自定义handler(自定义)
                             pipeline.addLast(new MyServerHandler());
 
